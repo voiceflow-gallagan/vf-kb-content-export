@@ -59,7 +59,8 @@ async function fetchDocContent(baseUrl: string, apiKey: string, documentID: stri
 
 // Change the parseTableContent function to use dedicated parser logic if needed
 function parseTableContent(chunks: any[]): string {
-  return chunks.map(chunk => chunk.content).join('\n\n');
+  const sanitizedChunks = chunks.map(({ chunkID, ...rest }) => rest);
+  return JSON.stringify(sanitizedChunks, null, 2); // Save chunks in their original format (JSON)
 }
 
 // Change the parseUrlContent function to use dedicated parser logic if needed
@@ -95,10 +96,12 @@ async function ensureZipDirExists(subDir: string) {
 async function processDoc(baseUrl: string, apiKey: string, doc: any, subDir: string) {
   const content = await fetchDocContent(baseUrl, apiKey, doc.documentID);
   let parsedContent = '';
+  let fileExtension = '.txt';
 
   // Update this to handle other doc types and use dedicated parser if needed
   if (doc.data.type === 'table') {
     parsedContent = parseTableContent(content.chunks);
+    fileExtension = '.json';
   } else if (doc.data.type === 'url') {
     parsedContent = parseUrlContent(content.chunks);
   } else {
@@ -106,7 +109,7 @@ async function processDoc(baseUrl: string, apiKey: string, doc: any, subDir: str
   }
 
   const sanitizedName = sanitizeFileName(doc.data.name);
-  const fileName = path.join(subDir, `${sanitizedName}.txt`);
+  const fileName = path.join(subDir, `${sanitizedName}${fileExtension}`);
   const safeFilePath = path.normalize(fileName).replace(/^(\.\.[\/\\])+/, '');
   await writeFile(safeFilePath, parsedContent);
   console.log(`Created file: ${safeFilePath}`);
@@ -143,7 +146,9 @@ async function main() {
     totalDocs = docsResponse.total;
 
     for (const doc of docsResponse.data) {
-      await processDoc(baseUrl, apiKey, doc, subDir);
+      if(doc.status.type === 'SUCCESS') {
+        await processDoc(baseUrl, apiKey, doc, subDir);
+      }
     }
 
     page++;
