@@ -120,7 +120,7 @@ async function createZipOfExportedDocs(subDir: string, zipDir: string) {
   const files = await readdir(subDir);
 
   for (const file of files) {
-    if (path.extname(file) === '.txt') {
+    if (path.extname(file) === '.txt' || path.extname(file) === '.json') {
       const content = await readFile(path.join(subDir, file));
       zip.file(file, content);
     }
